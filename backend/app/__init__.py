@@ -62,11 +62,26 @@ def create_app(config_name):
     def slack():
         if request.form['token'] == SLACK_WEBHOOK_SECRET:
             channel = request.form['channel_name']
-            username = request.form['user_name']
+            #username = request.form['user_name']
             text = request.form['text']
-            response_message = username + " in " + channel + " says: " + text
-            twilio_client.messages.create(to=USER_NUMBER, from_=TWILIO_NUMBER,
-                                          body=response_message)
+            words = text.split()
+            if words[1]=='#poll:' or words[1]=='#alert:':
+                response = ' '.join(words[1:])[1:]
+                twilio_client.messages.create(to=USER_NUMBER, from_=TWILIO_NUMBER,
+                                              body=response)
+            elif words[1]=='#update:':
+                response = 'Record updated'
+                slack_client.api_call("chat.postMessage", channel=channel,
+                                      text=response, username='teresabot',
+                                      icon_emoji=':older_woman::skin-tone-3:')
+            elif words[1]=='#share:':
+                response = 'Record updated, and our spirited survivers have been notified'
+                slack_client.api_call("chat.postMessage", channel=channel,
+                                      text=response, username='teresabot',
+                                      icon_emoji=':older_woman::skin-tone-3:')
+                response = 'Just shared: ' + ' '.join(words[2:])
+                twilio_client.messages.create(to=USER_NUMBER, from_=TWILIO_NUMBER,
+                                              body=response)
         return Response(), 200
 
     app.register_blueprint(blueprint)
