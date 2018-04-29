@@ -11,6 +11,14 @@ from app import db
 from models import Resources, Customers
 
 
+def TwilioEndpoint(args):
+    user_phone = args.get('From', '')
+    user_zip = args.get('FromZip', '94086')
+    message = args.get('Body', 'No message!')
+    print("*** SMS received: {} from {} @ {}".format(message, user_phone, user_zip), file=sys.stderr)
+    return message
+
+
 class ResourceEndpoint(Resource):
     resource_fields = {
         "id": fields.String,
