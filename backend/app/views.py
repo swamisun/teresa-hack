@@ -16,7 +16,7 @@ FOOD = ['hungry', 'food', 'eat', 'soup', 'kitchen']
 FOOD_INTENT = 'food'
 SHELTER = ['room', 'sleep', 'board', 'shelter']
 SHELTER_INTENT = 'shelter'
-NEARBY = 5.0  # 5 miles
+NEARBY = 8047  # 5 miles
 
 gmaps = GoogleMaps()
 
@@ -26,25 +26,41 @@ def get_intent(message):
         return FOOD_INTENT
     if any(shelter_intent in message for shelter_intent in SHELTER):
         return SHELTER_INTENT
+    return FOOD_INTENT
+
+
+def get_location(message, user_zip):
+    words = message.split()
+    indices = [idx for idx, word in enumerate(words) if word == 'near']
+    if len(indices)==1 and words[indices[0]+1].isdigit():
+        # Found 'near' in message
+        user_zip = words[indices[0]+1]
+    print("*** customer location:", user_zip, words, indices, file=sys.stderr)
+    return user_zip
 
 
 def store_user_info(user_phone, user_zip):
-    (lat, lng) = gmaps.get_lat_long(address=user_zip)
-    customer = Customers(phone=user_phone, latitude=lat,
-                         longitude=lng, age=18, gender='')
-    print("*** customer object generated:", customer, file=sys.stderr)
-    try:
-        db.session.add(customer)
-        db.session.commit()
-        print("*** Added customer:", str(customer), file=sys.stderr)
-    except exc.IntegrityError:
-        db.session().rollback()
-        print("Potential duplicate entry")
+    location = gmaps.get_lat_long(address=user_zip)
+    if location is not None:
+        (lat, lng) = location
+        customer = Customers(phone=user_phone, latitude=lat,
+                             longitude=lng, age=18, gender='')
+        print("*** customer object generated:", customer, file=sys.stderr)
+        try:
+            db.session.add(customer)
+            db.session.commit()
+            print("*** Added customer:", str(customer), file=sys.stderr)
+        except exc.IntegrityError:
+            db.session().rollback()
+            print("Potential duplicate entry")
 
 
 def get_resources_for_user(user_intent, user_zip):
-    resources = Resources.query.filter_by(category=user_intent)
-    print("*** {} resources available:".format(len(resources)), file=sys.stderr)
+    print("*** Category {} UserZip {}".format(user_intent, user_zip), file=sys.stderr)
+    #resources = Resources.query.filter_by(category=user_intent)
+    resources = Resources.query.filter_by(category=user_intent, zip_code=user_zip)
+    for res in resources:
+        print("*** res {} dist {}".format(res.id, gmaps.calculate_distance(res.address, user_zip)), file=sys.stderr)
     nearby_resources = [res for res in resources if (gmaps.calculate_distance(res.address, user_zip) < NEARBY)]
     print("*** {} nearby resources available:".format(len(nearby_resources)), file=sys.stderr)
     return nearby_resources
@@ -53,19 +69,27 @@ def get_resources_for_user(user_intent, user_zip):
 def TwilioEndpoint(args):
     user_phone = args.get('From', '')
     user_zip = args.get('FromZip', '94086')
-    message = args.get('Body', 'No message!')
-    print("*** SMS received: {} from {} @ {}".format(message, user_phone, user_zip), file=sys.stderr)
-    store_user_info(user_phone, user_zip)
-    user_intent = get_intent(message)
-    print("*** User intent:", user_intent, file=sys.stderr)
-    # user = Customers.query.filter_by(phone=user_phone)
-    nearby_resources = get_resources_for_user(user_intent, user_zip)
-    message = 'Sorry! No nearby resource for {} found'.format(user_intent)
-    if len(nearby_resources)>0:
-        resource = nearby_resources[0]
-        print("*** Nearest resource:", resource, file=sys.stderr)
-        message = 'Great news! {} has {} available between {} to {}'.format(resource.name, user_intent,
+    sms_message = args.get('Body', 'No message!').lower()
+    print("*** SMS received: {} from {} @ {}".format(sms_message, user_phone, user_zip), file=sys.stderr)
+    message = 'Sorry! No nearby resource found'
+    try:
+        store_user_info(user_phone, user_zip)
+        user_location = get_location(sms_message, user_zip)
+        user_intent = get_intent(sms_message)
+        message = 'Sorry! No nearby resource for {} found'.format(user_intent)
+        print("*** User intent:", user_intent, file=sys.stderr)
+        # user = Customers.query.filter_by(phone=user_phone)
+        nearby_resources = get_resources_for_user(user_intent, user_location)
+        if len(nearby_resources)>0:
+            resource = nearby_resources[0]
+            print("*** Nearest resource:", resource, file=sys.stderr)
+            message = 'Great news! {} has {} available between {} to {}'.format(resource.name, user_intent,
                                                                             resource.start_time, resource.end_time)
+    except Exception as e:
+        print("### Error handling SMS: {} {}".format(e.errno if hasattr(e, 'error') else "???",
+                                                          e.strerror if hasattr(e, 'error') else e),
+              file=sys.stderr)
+        
     return message
 
 

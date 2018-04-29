@@ -8,7 +8,7 @@ import googlemaps
 
 
 class GoogleMaps(object):
-    def __init__(self, key):
+    def __init__(self):
         self.gmaps = googlemaps.Client(key=os.environ['GOOGLE_KEY'])
 
     def calculate_distance(self, source, destination):
@@ -39,12 +39,13 @@ class GoogleMaps(object):
         try:
             ret = None
             geocode_result = self.gmaps.geocode(address=address)
-            if geocode_result['status'] == 'OK':
+            print ("### Geocoding result:", geocode_result, file=sys.stderr)
+            if len(geocode_result)==1:
                 location = geocode_result[0]['geometry']['location']
                 ret = (location['lat'], location['lng'])
             return ret
         except (NameError, KeyError) as e:
-            print("### Error fetching distance: {} {}".format(e.errno if hasattr(e, 'error') else "???",
+            print("### Error fetching lat long: {} {}".format(e.errno if hasattr(e, 'error') else "???",
                                                               e.strerror if hasattr(e, 'error') else e),
                   file=sys.stderr)
             return None
