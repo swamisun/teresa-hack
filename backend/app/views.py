@@ -16,6 +16,14 @@ FOOD = ['hungry', 'food', 'eat', 'soup', 'kitchen']
 FOOD_INTENT = 'food'
 SHELTER = ['room', 'sleep', 'board', 'shelter']
 SHELTER_INTENT = 'shelter'
+CHECKIN = ['safe', 'rob', 'theft', 'harrass']
+CHECKIN_INTENT = 'checkin'
+SOS = ['sos', 'help', 'fire', 'flood']
+SOS_INTENT = 'sos'
+POLL_INTENT = 'poll'
+
+# TODO: Poll intent
+
 NEARBY = 8047  # 5 miles
 
 gmaps = GoogleMaps()
@@ -26,12 +34,16 @@ def get_intent(message):
         return FOOD_INTENT
     if any(shelter_intent in message for shelter_intent in SHELTER):
         return SHELTER_INTENT
+    if any(checkin_intent in message for checkin_intent in CHECKIN):
+        return CHECKIN_INTENT
+    if any(sos_intent in message for sos_intent in SOS):
+        return SOS_INTENT
     return FOOD_INTENT
 
 
 def get_location(message, user_zip):
     words = message.split()
-    indices = [idx for idx, word in enumerate(words) if word == 'near']
+    indices = [idx for idx, word in enumerate(words) if (word == 'near' or word == 'around')]
     if len(indices)==1 and words[indices[0]+1].isdigit():
         # Found 'near' in message
         user_zip = words[indices[0]+1]
@@ -73,18 +85,28 @@ def TwilioEndpoint(args):
     print("*** SMS received: {} from {} @ {}".format(sms_message, user_phone, user_zip), file=sys.stderr)
     message = 'Sorry! No nearby resource found'
     try:
+        # Store user details
+        # TODO: Add timestamp & intent to checkin
         store_user_info(user_phone, user_zip)
         user_location = get_location(sms_message, user_zip)
         user_intent = get_intent(sms_message)
-        message = 'Sorry! No nearby resource for {} found'.format(user_intent)
-        print("*** User intent:", user_intent, file=sys.stderr)
-        # user = Customers.query.filter_by(phone=user_phone)
-        nearby_resources = get_resources_for_user(user_intent, user_location)
-        if len(nearby_resources)>0:
-            resource = nearby_resources[0]
-            print("*** Nearest resource:", resource, file=sys.stderr)
-            message = 'Great news! {} has {} available between {} to {}'.format(resource.name, user_intent,
-                                                                            resource.start_time, resource.end_time)
+        if user_intent==FOOD_INTENT or user_intent==SHELTER_INTENT:
+            message = 'Sorry! No nearby resource for {} found'.format(user_intent)
+            print("*** User intent:", user_intent, file=sys.stderr)
+            # user = Customers.query.filter_by(phone=user_phone)
+            nearby_resources = get_resources_for_user(user_intent, user_location)
+            if len(nearby_resources)>0:
+                resource = nearby_resources[0]
+                print("*** Nearest resource:", resource, file=sys.stderr)
+                message = 'Great news! {} has {} available between {} to {}'.format(resource.name, user_intent,
+                                                                                    resource.start_time,
+                                                                                    resource.end_time)
+        elif user_intent==CHECKIN_INTENT:
+            message = 'Thank for sharing. Hope you are safe. We will use this to advice others'
+            # TODO: Save checkin intent
+        else:  # SOS_INTENT
+            message = 'We have notified the authoritites to help you. Please be safe!'
+            # TODO: Save SOS intent
     except Exception as e:
         print("### Error handling SMS: {} {}".format(e.errno if hasattr(e, 'error') else "???",
                                                           e.strerror if hasattr(e, 'error') else e),
