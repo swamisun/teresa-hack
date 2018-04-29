@@ -19,7 +19,7 @@ CHECKIN = ['safe', 'rob', 'theft', 'harass']
 CHECKIN_INTENT = 'checkin'
 SOS = ['sos', 'help', 'fire', 'flood']
 SOS_INTENT = 'sos'
-POLL_INTENT = 'poll'
+UNKNOWN_INTENT = 'unknown'
 
 # TODO: Poll intent
 
@@ -37,7 +37,7 @@ def get_intent(message):
         return CHECKIN_INTENT
     if any(sos_intent in message for sos_intent in SOS):
         return SOS_INTENT
-    return FOOD_INTENT
+    return UNKNOWN_INTENT
 
 
 def get_location(message, user_zip):
@@ -103,9 +103,14 @@ def TwilioEndpoint(args):
         elif user_intent==CHECKIN_INTENT:
             message = 'Thank for sharing. Hope you are safe. We will use this to advice others'
             # TODO: Save checkin intent
-        else:  # SOS_INTENT
-            message = 'We have notified the authoritites to help you. Please be safe!'
+        elif user_intent==SOS_INTENT:
+            message = 'We have notified the authorities of the emergency. Please be safe while they respond!'
             # TODO: Save SOS intent
+        else:
+            # Unknown intent
+            message = 'I am sorry, I did not understand your request. I understand phrases like ' \
+                      '"Food near 94102", "Soup kitchens around 94544", "Shelter around 94110", "Hungry!"' \
+                      'I also respond to "Help!", "Just got robbed", "This is a safe place for the night", etc'
     except Exception as e:
         print("### Error handling SMS: {} {}".format(e.errno if hasattr(e, 'error') else "???",
                                                           e.strerror if hasattr(e, 'error') else e),
