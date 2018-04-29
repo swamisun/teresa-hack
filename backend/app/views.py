@@ -6,7 +6,6 @@ from sqlalchemy import exc
 from flask_restful import Resource, Api, fields, marshal_with
 from flask import abort, request
 
-
 from app import db
 from models import Resources, Customers
 from gmaps import GoogleMaps
@@ -209,3 +208,4 @@ class CustomerEndpoint(Resource):
         except exc.IntegrityError:
             db.session().rollback()
             return "Potential duplicate entry", 409, {'Content-Type': 'application/json'}
+
