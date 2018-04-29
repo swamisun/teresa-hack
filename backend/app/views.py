@@ -33,7 +33,11 @@ class ResourceEndpoint(Resource):
     @marshal_with(resource_fields)
     def get(self):
         resources = Resources.query.all()
-        print("**** resources:", str(resources), file=sys.stderr)
+        for resource in resources:
+            try:
+                print("**** resources:", resource, file=sys.stderr)
+            except:
+                print ("####### Failed to print ID:", resource.id, file=sys.stderr)
         return resources, 200, {'Content-Type': 'application/json'}
 
     @marshal_with(resource_fields)
