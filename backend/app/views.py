@@ -9,6 +9,45 @@ from flask import abort, request
 
 from app import db
 from models import Resources, Customers
+from gmaps import GoogleMaps
+
+
+FOOD = ['hungry', 'food', 'eat', 'soup', 'kitchen']
+FOOD_INTENT = 'food'
+SHELTER = ['room', 'sleep', 'board', 'shelter']
+SHELTER_INTENT = 'shelter'
+NEARBY = 5.0  # 5 miles
+
+gmaps = GoogleMaps()
+
+
+def get_intent(message):
+    if any(food_intent in message for food_intent in FOOD):
+        return FOOD_INTENT
+    if any(shelter_intent in message for shelter_intent in SHELTER):
+        return SHELTER_INTENT
+
+
+def store_user_info(user_phone, user_zip):
+    (lat, lng) = gmaps.get_lat_long(address=user_zip)
+    customer = Customers(phone=user_phone, latitude=lat,
+                         longitude=lng, age=18, gender='')
+    print("*** customer object generated:", customer, file=sys.stderr)
+    try:
+        db.session.add(customer)
+        db.session.commit()
+        print("*** Added customer:", str(customer), file=sys.stderr)
+    except exc.IntegrityError:
+        db.session().rollback()
+        print("Potential duplicate entry")
+
+
+def get_resources_for_user(user_intent, user_zip):
+    resources = Resources.query.filter_by(category=user_intent)
+    print("*** {} resources available:".format(len(resources)), file=sys.stderr)
+    nearby_resources = [res for res in resources if (gmaps.calculate_distance(res.address, user_zip) < NEARBY)]
+    print("*** {} nearby resources available:".format(len(nearby_resources)), file=sys.stderr)
+    return nearby_resources
 
 
 def TwilioEndpoint(args):
@@ -16,6 +55,17 @@ def TwilioEndpoint(args):
     user_zip = args.get('FromZip', '94086')
     message = args.get('Body', 'No message!')
     print("*** SMS received: {} from {} @ {}".format(message, user_phone, user_zip), file=sys.stderr)
+    store_user_info(user_phone, user_zip)
+    user_intent = get_intent(message)
+    print("*** User intent:", user_intent, file=sys.stderr)
+    # user = Customers.query.filter_by(phone=user_phone)
+    nearby_resources = get_resources_for_user(user_intent, user_zip)
+    message = 'Sorry! No nearby resource for {} found'.format(user_intent)
+    if len(nearby_resources)>0:
+        resource = nearby_resources[0]
+        print("*** Nearest resource:", resource, file=sys.stderr)
+        message = 'Great news! {} has {} available between {} to {}'.format(resource.name, user_intent,
+                                                                            resource.start_time, resource.end_time)
     return message
 
 
