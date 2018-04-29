@@ -8,7 +8,7 @@ from flask import abort, request
 
 
 from app import db
-from models import Resources
+from models import Resources, Customers
 
 
 class ResourceEndpoint(Resource):
@@ -35,7 +35,7 @@ class ResourceEndpoint(Resource):
         resources = Resources.query.all()
         for resource in resources:
             try:
-                print("**** resources:", resource, file=sys.stderr)
+                print("**** resource:", resource, file=sys.stderr)
             except:
                 print ("####### Failed to print ID:", resource.id, file=sys.stderr)
         return resources, 200, {'Content-Type': 'application/json'}
@@ -63,6 +63,45 @@ class ResourceEndpoint(Resource):
             db.session.commit()
             print("*** Added resource:", str(resource), file=sys.stderr)
             return resource, 201, {'Content-Type': 'application/json'}
+        except exc.IntegrityError:
+            db.session().rollback()
+            return "Potential duplicate entry", 409, {'Content-Type': 'application/json'}
+
+
+class CustomerEndpoint(Resource):
+    customer_fields = {
+        "id": fields.String,
+        "phone": fields.String,
+        "latitude": fields.String,
+        "longitude": fields.String,
+        "age": fields.Integer,
+        "gender": fields.String,
+        "family_size": fields.Integer}
+
+    @marshal_with(customer_fields)
+    def get(self):
+        customers = Customers.query.all()
+        for customer in customers:
+            try:
+                print("**** customer:", customer, file=sys.stderr)
+            except:
+                print ("####### Failed to print ID:", customer.id, file=sys.stderr)
+        return customers, 200, {'Content-Type': 'application/json'}
+
+    @marshal_with(customer_fields)
+    def post(self):
+        customer = Customers(phone=request.json.get('phone', ''),
+                             latitude=request.json.get('latitude', ''),
+                             longitude=request.json.get('longitude', ''),
+                             age=request.json.get('age', 99),
+                             gender=request.json.get('gender', ''),
+                             family_size=request.json.get('family_size', ''))
+        print("*** customer object generated:", customer, file=sys.stderr)
+        try:
+            db.session.add(customer)
+            db.session.commit()
+            print("*** Added customer:", str(customer), file=sys.stderr)
+            return customer, 201, {'Content-Type': 'application/json'}
         except exc.IntegrityError:
             db.session().rollback()
             return "Potential duplicate entry", 409, {'Content-Type': 'application/json'}

@@ -35,8 +35,9 @@ def create_app(config_name):
     blueprint = Blueprint('tree', __name__)
 
     api = Api(blueprint, prefix=PREFIX)
-    from views import ResourceEndpoint
+    from views import ResourceEndpoint, CustomerEndpoint
     api.add_resource(ResourceEndpoint, '/resources')
+    api.add_resource(CustomerEndpoint, '/customers')
 
     app.register_blueprint(blueprint)
 
