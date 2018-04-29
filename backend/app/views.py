@@ -71,8 +71,9 @@ def get_resources_for_user(user_intent, user_zip):
     #resources = Resources.query.filter_by(category=user_intent)
     resources = Resources.query.filter_by(category=user_intent, zip_code=user_zip)
     for res in resources:
-        print("*** res {} dist {}".format(res.id, gmaps.calculate_distance(res.address, user_zip)), file=sys.stderr)
-    nearby_resources = [res for res in resources if (gmaps.calculate_distance(res.address, user_zip) < NEARBY)]
+        print("*** res {} {} {} dist {}".format(res.id, res.zip_code, user_zip, 
+                                                gmaps.calculate_distance(res.zip_code, user_zip)), file=sys.stderr)
+    nearby_resources = [res for res in resources if (gmaps.calculate_distance(res.zip_code, user_zip) < NEARBY)]
     print("*** {} nearby resources available:".format(len(nearby_resources)), file=sys.stderr)
     return nearby_resources
 
