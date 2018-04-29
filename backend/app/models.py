@@ -66,3 +66,35 @@ class Resources(db.Model):
                                                    self.image_url, self.url, self.min_age, self.max_age,
                                                    self.gender, self.accessibility)
 
+
+class Customers(db.Model):
+    """
+    Create a Customers model
+    """
+
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
+    phone = db.Column(db.String(45), nullable=False)
+    latitude = db.Column(db.String(45), nullable=False)
+    longitude = db.Column(db.String(45), nullable=False)
+    age = db.Column(db.Integer)
+    gender = db.Column(db.CHAR(1))
+    family_size = db.Column(db.Integer)
+
+    def __init__(self, phone, latitude, longitude,
+                 age, gender, family_size=1):
+        self.phone = phone
+        self.latitude = latitude
+        self.longitude = longitude
+        self.age = age
+        self.gender = gender
+        self.family_size = family_size
+
+    def __repr__(self):
+        return '{{ "customer_id": "{}",' \
+               ' "phone": "{}",' \
+               '  "latitude": "{}",' \
+               '  "longitude": "{}",' \
+               '  "age": {},' \
+               '  "gender": "{}",' \
+               '  "family_size": {} }}'.format(self.id, self.phone, self.latitude, self.longitude,
+                                               self.age, self.gender, self.family_size)
